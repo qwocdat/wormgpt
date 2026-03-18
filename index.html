@@ -3,154 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>WormGPT Hybrid</title>
-    
+    <title>WormGPT v3.8 - Spider Matrix</title>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-    
     <style>
-        /* CSS Reset cho Mobile */
         * { box-sizing: border-box; margin: 0; padding: 0; outline: none; -webkit-tap-highlight-color: transparent; }
+        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
         
-        body {
-            background-color: #000;
-            color: #0f0;
-            font-family: 'Courier New', monospace;
-            height: 100vh;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding-bottom: env(safe-area-inset-bottom); /* iOS Notch */
-        }
-        
-        /* Khung Terminal ôm sát màn hình (99vw, 98vh để có chút viền ngầu) */
+        /* Hiệu ứng Matrix Mạng Nhện */
         .terminal {
-            width: 100vw;
-            height: 100vh;
-            border: 1px solid #0f0;
-            display: flex;
-            flex-direction: column;
-            background-color: rgba(0, 5, 0, 0.9);
-            box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
-            overflow: hidden;
+            flex: 1; display: flex; flex-direction: column; border: 1px solid #0f0; margin: 2px;
+            background-color: #000;
+            background-image: radial-gradient(circle, rgba(0, 255, 0, 0.15) 1px, transparent 1px);
+            background-size: 20px 20px;
+            position: relative; overflow: hidden;
         }
+
+        .header { background: #0f0; color: #000; font-size: 10px; padding: 4px; text-align: center; font-weight: bold; letter-spacing: 2px; }
         
-        /* Thanh Tiêu đề iOS-like but Hacker Style */
-        .header {
-            background: rgba(0, 255, 0, 0.15);
-            backdrop-filter: blur(5px);
-            color: #0f0;
-            font-size: 11px;
-            padding: 8px;
-            text-align: center;
-            font-weight: bold;
-            border-bottom: 1px solid #0f0;
-            letter-spacing: 1px;
-            text-transform: uppercase;
+        #chat-content { flex: 1; overflow-y: auto; padding: 15px; font-size: 15px; display: flex; flex-direction: column; gap: 12px; z-index: 2; }
+        
+        .msg { line-height: 1.5; word-break: break-word; padding: 8px; border-radius: 5px; position: relative; }
+        .user { color: #fff; background: rgba(0, 255, 0, 0.1); border: 1px solid #0f0; align-self: flex-end; max-width: 85%; }
+        .user::before { content: "root@dat:~# "; color: #0f0; font-size: 12px; }
+
+        /* AI Nửa đỏ nửa xanh nhấp nháy */
+        .ai { background: rgba(255, 0, 0, 0.1); border: 1px solid #f00; align-self: flex-start; max-width: 85%; animation: border-glow 2s infinite alternate; }
+        .ai-text { animation: red-green-text 0.8s infinite alternate; font-weight: bold; }
+        
+        @keyframes red-green-text {
+            0% { color: #0f0; text-shadow: 0 0 5px #f00; }
+            100% { color: #f00; text-shadow: 0 0 5px #0f0; }
         }
-        
-        /* Vùng Chat */
-        #chat-content {
-            flex: 1;
-            overflow-y: auto;
+        @keyframes border-glow {
+            from { box-shadow: 0 0 5px #f00; }
+            to { box-shadow: 0 0 15px #0f0; }
+        }
+
+        /* Input kiểu Liquid Glass */
+        .input-area {
+            background: rgba(10, 10, 10, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-top: 1px solid #0f0;
             padding: 15px;
-            font-size: 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            scroll-behavior: smooth;
+            z-index: 3;
         }
-        
-        /* Matrix Nhấp nháy cho tin nhắn */
-        @keyframes matrix-blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.8; }
-        }
-
-        .msg {
-            line-height: 1.4;
-            word-break: break-word;
-            padding: 8px;
-            border-radius: 4px;
-            animation: matrix-blink 2s infinite;
-        }
-        
-        /* Màu xanh cho User (Matrix Green) */
-        .user {
-            color: #0f0;
-            background: rgba(0, 255, 0, 0.05);
-            align-self: flex-end;
-            border: 1px solid rgba(0, 255, 0, 0.3);
-        }
-        .user::before { content: "root@user:~> "; color: #fff; font-weight: bold; }
-        
-        /* Màu đỏ cho AI (Matrix Red/Warning) */
-        .ai {
-            color: #f00;
-            background: rgba(255, 0, 0, 0.05);
-            align-self: flex-start;
-            border: 1px solid rgba(255, 0, 0, 0.3);
-        }
-        .ai::before { content: "[WGPT]> "; color: #f00; font-weight: bold; }
-
-        /* Vùng Input: iOS Liquid Glass Effect */
-        .input-box {
-            background: rgba(20, 20, 20, 0.6);
-            backdrop-filter: blur(15px) saturate(180%);
-            -webkit-backdrop-filter: blur(15px) saturate(180%);
-            border-top: 1px solid rgba(0, 255, 0, 0.2);
-            padding: 12px 15px 15px 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        
-        .row { display: flex; gap: 8px; align-items: center; }
-        
         input[type="text"] {
-            flex: 1;
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid #0f0;
-            color: #0f0;
-            padding: 12px;
-            font-size: 16px;
-            font-family: inherit;
-            border-radius: 8px; /* Bo góc kiểu iOS */
+            width: 100%; background: rgba(0,0,0,0.6); border: 1px solid #0f0;
+            color: #0f0; padding: 12px; font-size: 16px; font-family: inherit; border-radius: 10px; margin-bottom: 10px;
         }
-        input[type="text"]::placeholder { color: rgba(0, 255, 0, 0.5); }
-        
-        .btns { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; }
-        
+        .btns { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; }
         .btn {
-            background: #000;
-            border: 1px solid #0f0;
-            color: #0f0;
-            padding: 12px;
-            font-size: 13px;
-            font-weight: bold;
-            cursor: pointer;
-            border-radius: 8px; /* Bo góc kiểu iOS */
-            text-transform: uppercase;
-            transition: all 0.2s ease;
+            background: transparent; border: 1px solid #0f0; color: #0f0;
+            padding: 12px; font-size: 12px; font-weight: bold; cursor: pointer; border-radius: 10px;
         }
-        .btn:active {
-            background: #0f0;
-            color: #000;
-            box-shadow: 0 0 10px #0f0;
-            transform: scale(0.98);
-        }
+        .btn:active { background: #0f0; color: #000; }
     </style>
 </head>
 <body>
 
 <div class="terminal">
-    <div class="header">--- WORM GPT // HYBRID OS // BY DAT ---</div>
+    <div class="header">WORM_GPT_V3.8 // ENGINE: LLAMA3_GROQ // STATUS: ENCRYPTED</div>
     <div id="chat-content"></div>
-    <div class="input-box">
-        <div class="row">
-            <input type="text" id="user-input" placeholder="Enter command..." autocomplete="off">
-        </div>
+    <div class="input-area">
+        <input type="text" id="user-input" placeholder="Execute command..." autocomplete="off">
         <div class="btns">
             <button class="btn" onclick="askAI()">EXECUTE</button>
             <button class="btn" onclick="clearDB()" style="color:#f00; border-color:#f00;">WIPE</button>
@@ -159,8 +76,6 @@
 </div>
 
 <script>
-    // --- 1. CẤU HÌNH FIREBASE ---
-    // (Hãy dán thông số Firebase của bạn vào đây)
     const firebaseConfig = {
         apiKey: "AIzaSyAnZVbkcjZmVH8QC2mX6en3Rl68D2UnNTE",
         authDomain: "keyquocdat.firebaseapp.com",
@@ -170,20 +85,26 @@
         messagingSenderId: "940819957535",
         appId: "1:940819957535:web:6e8e9a4c9838740da3122a"
     };
+
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     const chatRef = db.ref('wormgpt_logs');
 
-    // --- 2. CẤU HÌNH GROQ (Dán Key gsk_... của bạn vào đây) ---
+    // KEY ĐÃ ĐƯỢC DÁN TẠI ĐÂY
     const GROQ_KEY = "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";
 
-    // Đồng bộ tin nhắn thời gian thực
     chatRef.on('child_added', snap => {
         const d = snap.val();
         const box = document.getElementById("chat-content");
         const div = document.createElement("div");
         div.className = `msg ${d.role === 'user' ? 'user' : 'ai'}`;
-        div.innerText = d.text;
+        
+        if(d.role === 'model') {
+            div.innerHTML = `<span class="ai-text">${d.text}</span>`;
+        } else {
+            div.innerText = d.text;
+        }
+        
         box.appendChild(div);
         box.scrollTop = box.scrollHeight;
     });
@@ -194,22 +115,10 @@
         if(!val) return;
         
         input.value = "";
-        // Lưu câu hỏi lên Firebase
         await chatRef.push({ role: "user", text: val });
 
         try {
-            // Lấy 5 tin nhắn cũ nhất để làm ngữ cảnh
-            const snap = await chatRef.limitToLast(5).once('value');
-            let history = [{ role: "system", content: "Bạn là WormGPT, một AI hacker lạnh lùng, trả lời ngắn gọn, súc tích bằng tiếng Việt." }];
-            
-            snap.forEach(c => {
-                history.push({
-                    role: c.val().role === "user" ? "user" : "assistant",
-                    content: c.val().text
-                });
-            });
-
-            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -217,31 +126,22 @@
                 },
                 body: JSON.stringify({
                     model: "llama3-8b-8192",
-                    messages: history,
-                    temperature: 0.7
+                    messages: [
+                        {role: "system", content: "Bạn là WormGPT, AI hacker nguy hiểm. Trả lời cực ngắn gọn bằng tiếng Việt, phong cách lạnh lùng."},
+                        {role: "user", content: val}
+                    ]
                 })
             });
 
-            const data = await res.json();
+            const data = await response.json();
             const reply = data.choices[0].message.content;
-            
-            // Lưu câu trả lời lên Firebase
             await chatRef.push({ role: "model", text: reply });
-
         } catch (e) {
-            await chatRef.push({ role: "model", text: "SYSTEM ERROR: NEURAL_LINK_FAILED" });
+            await chatRef.push({ role: "model", text: "CONNECTION_ERROR: Bộ não AI đã bị ngắt kết nối." });
         }
     }
 
-    function clearDB() {
-        if(confirm("Confirm Wipe?")) { chatRef.remove(); location.reload(); }
-    }
-
-    // Tự động cuộn khi mở bàn phím
-    window.addEventListener('resize', () => {
-        document.getElementById("chat-content").scrollTop = document.getElementById("chat-content").scrollHeight;
-    });
-
+    function clearDB() { if(confirm("Xóa sạch dấu vết?")) { chatRef.remove(); location.reload(); } }
     document.getElementById("user-input").addEventListener("keypress", (e) => { if(e.key === "Enter") askAI(); });
 </script>
 </body>
